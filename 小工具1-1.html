@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月例計算小工具</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f5f7fa;
+            --border-color: #bdc3c7;
+            --success-color: #27ae60;
+            --danger-color: #c0392b;
+        }
+
+        body {
+            font-family: 'Segoe UI', "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
+        }
+
+        /* 地區選擇器 */
+        .region-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        select {
+            padding: 8px 16px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 表格樣式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: normal;
+        }
+
+        .input-group input {
+            width: 100px;
+            padding: 6px;
+            text-align: right;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        .subtotal {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* 總計行強調 */
+        .total-row {
+            background-color: #ecf0f1;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        /* 驗算區塊 */
+        .verification-section {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+
+        .verification-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+            color: #856404;
+        }
+
+        .verify-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .verify-item label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #666;
+        }
+
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 4px;
+            color: white;
+        }
+
+        .balanced {
+            background-color: var(--success-color);
+        }
+
+        .unbalanced {
+            background-color: var(--danger-color);
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        .note {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>月例計算小工具</h2>
+
+   
+    <table>
+        <thead>
+            <tr>
+                <th>面額</th>
+                <th>輸入 (張數 / 金額)</th>
+                <th>小計</th>
+            </tr>
+        </thead>
+        <tbody id="calcBody">
+            <tr>
+                <td>$1,000</td>
+                <td class="input-group"><input type="number" id="in_1000" oninput="calculate()" placeholder="張數"></td>
+                <td class="subtotal" id="sub_1000">0</td>
+            </tr>
+            <tr>
+                <td>$500</td>
+                <td class="input-group"><input type="number" id="in_500" oninput="calculate()" placeholder="張數"></td>
+                <td class="subtotal" id="sub_500">0</td>
+            </tr>
+            <tr>
+                <td>$100</td>
+                <td class="input-group"><input type="number" id="in_100" oninput="calculate()" placeholder="張數"></td>
+                <td class="subtotal" id="sub_100">0</td>
+            </tr>
+            <tr style="background-color: #f9f9f9;">
+                <td colspan="3" class="note">⚠️ 注意：以下硬幣請直接輸入「總金額」</td>
+            </tr>
+            <tr>
+                <td>$50</td>
+                <td class="input-group"><input type="number" id="in_50" oninput="calculate()" placeholder="金額"></td>
+                <td class="subtotal" id="sub_50">0</td>
+            </tr>
+            <tr>
+                <td>$10</td>
+                <td class="input-group"><input type="number" id="in_10" oninput="calculate()" placeholder="金額"></td>
+                <td class="subtotal" id="sub_10">0</td>
+            </tr>
+            <tr>
+                <td>$5</td>
+                <td class="input-group"><input type="number" id="in_5" oninput="calculate()" placeholder="金額"></td>
+                <td class="subtotal" id="sub_5">0</td>
+            </tr>
+            <tr>
+                <td>$1</td>
+                <td class="input-group"><input type="number" id="in_1" oninput="calculate()" placeholder="金額"></td>
+                <td class="subtotal" id="sub_1">0</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="2" style="text-align: right;">手算總金額 (TOTAL)</td>
+                <td id="grandTotal">0</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="verification-section">
+        <span class="verification-header">機器驗算區 (請輸入機器讀數)</span>
+        <div class="verify-grid">
+            <div class="verify-item">
+                <label>點幣機零錢總額</label>
+                <div class="input-group"><input type="number" id="v_coin" oninput="verify()" placeholder="348"></div>
+            </div>
+            <div class="verify-item">
+                <label>點鈔機 100</label>
+                <div class="input-group"><input type="number" id="v_100" oninput="verify()" placeholder="1400"></div>
+            </div>
+            <div class="verify-item">
+                <label>點鈔機 500</label>
+                <div class="input-group"><input type="number" id="v_500" oninput="verify()" placeholder="500"></div>
+            </div>
+            <div class="verify-item">
+                <label>點鈔機 1000</label>
+                <div class="input-group"><input type="number" id="v_1000" oninput="verify()" placeholder="5000"></div>
+            </div>
+        </div>
+
+        <div id="verifyResult" class="result-box balanced">
+            驗算差異：0
+        </div>
+    </div>
+</div>
+
+<script>
+    // 預設高雄資料 (來自您的 CSV)
+    const defaultData = {
+        kaohsiung: {
+            in_1000: 5, in_500: 1, in_100: 14,
+            in_50: 250, in_10: 80, in_5: 15, in_1: 3,
+            v_coin: 348, v_100: 1400, v_500: 500, v_1000: 5000
+        }
+    };
+
+    let currentRegion = 'kaohsiung';
+    // 簡單的資料存儲
+    const store = JSON.parse(JSON.stringify(defaultData)); 
+
+    function loadRegionData() {
+        const select = document.getElementById('regionSelect');
+        currentRegion = select.value;
+        
+        // 如果該地區沒有資料，清空；如果有，載入
+        const data = store[currentRegion] || {};
+        
+        const fields = ['in_1000', 'in_500', 'in_100', 'in_50', 'in_10', 'in_5', 'in_1', 'v_coin', 'v_100', 'v_500', 'v_1000'];
+        
+        fields.forEach(id => {
+            document.getElementById(id).value = data[id] !== undefined ? data[id] : '';
+        });
+
+        calculate();
+    }
+
+    function calculate() {
+        // 取得輸入值 (若為空則視為 0)
+        const getVal = (id) => Number(document.getElementById(id).value) || 0;
+
+        // 計算邏輯：紙鈔是張數 * 面額，硬幣直接是金額
+        const s1000 = getVal('in_1000') * 1000;
+        const s500 = getVal('in_500') * 500;
+        const s100 = getVal('in_100') * 100;
+        
+        // 硬幣輸入即金額
+        const s50 = getVal('in_50');
+        const s10 = getVal('in_10');
+        const s5 = getVal('in_5');
+        const s1 = getVal('in_1');
+
+        // 更新小計顯示
+        document.getElementById('sub_1000').innerText = s1000.toLocaleString();
+        document.getElementById('sub_500').innerText = s500.toLocaleString();
+        document.getElementById('sub_100').innerText = s100.toLocaleString();
+        document.getElementById('sub_50').innerText = s50.toLocaleString();
+        document.getElementById('sub_10').innerText = s10.toLocaleString();
+        document.getElementById('sub_5').innerText = s5.toLocaleString();
+        document.getElementById('sub_1').innerText = s1.toLocaleString();
+
+        // 總計
+        const total = s1000 + s500 + s100 + s50 + s10 + s5 + s1;
+        document.getElementById('grandTotal').innerText = total.toLocaleString();
+
+        // 保存當前輸入到 store
+        saveCurrentState();
+        
+        // 觸發驗算
+        verify(total);
+    }
+
+    function verify(manualTotal) {
+        if (manualTotal === undefined) {
+             // 重新計算 total
+             const getVal = (id) => Number(document.getElementById(id).value) || 0;
+             manualTotal = (getVal('in_1000') * 1000) + (getVal('in_500') * 500) + (getVal('in_100') * 100) +
+                           getVal('in_50') + getVal('in_10') + getVal('in_5') + getVal('in_1');
+        }
+
+        const getVal = (id) => Number(document.getElementById(id).value) || 0;
+        
+        const machineTotal = getVal('v_coin') + getVal('v_100') + getVal('v_500') + getVal('v_1000');
+        const diff = manualTotal - machineTotal;
+
+        const resultBox = document.getElementById('verifyResult');
+        resultBox.innerText = diff === 0 ? "驗算平衡 (OK)" : `驗算差異：${diff}`;
+        
+        if (diff === 0) {
+            resultBox.className = "result-box balanced";
+        } else {
+            resultBox.className = "result-box unbalanced";
+        }
+        
+        saveCurrentState();
+    }
+
+    function saveCurrentState() {
+        if (!store[currentRegion]) store[currentRegion] = {};
+        const fields = ['in_1000', 'in_500', 'in_100', 'in_50', 'in_10', 'in_5', 'in_1', 'v_coin', 'v_100', 'v_500', 'v_1000'];
+        fields.forEach(id => {
+            const val = document.getElementById(id).value;
+            if (val) store[currentRegion][id] = Number(val);
+            else delete store[currentRegion][id];
+        });
+    }
+
+    // 初始化
+    window.onload = loadRegionData;
+</script>
+
+</body>
+</html>
