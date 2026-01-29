@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>月例計算總表 (手機優化版)</title>
+    <style>
+        /* 全局設定 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 10px;
+            color: #333;
+            /* 防止手機下拉重整干擾操作 */
+            overscroll-behavior-y: contain; 
+        }
+
+        h2 { margin: 10px 0; text-align: center; font-size: 1.2rem; }
+
+        /* 手機版提示 */
+        .mobile-hint {
+            display: none; /* 電腦版隱藏 */
+            text-align: center;
+            color: #d9534f;
+            font-size: 13px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        /* 表格容器 - 核心捲動區 */
+        .table-container {
+            width: 100%;
+            overflow-x: auto; /* 橫向捲動 */
+            background: white;
+            border: 1px solid #999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+            /* 讓捲動更滑順 */
+            -webkit-overflow-scrolling: touch; 
+            max-height: 65vh; /* 避免佔滿整個畫面無法往下滑 */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            /* 這裡不設固定寬度，改由格子撐開，更適合手機 */
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            height: 35px; /* 加高一點讓手機好點擊 */
+            padding: 0;
+            text-align: center;
+            font-size: 14px;
+            white-space: nowrap;
+            min-width: 60px; /* 確保每一格不會縮太小 */
+        }
+
+        /* 輸入框優化 */
+        input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center; /* 手機置中比較好對齊 */
+            outline: none;
+            background: transparent;
+            font-size: 16px; /* 防止 iPhone 自動縮放 */
+            padding: 0;
+            margin: 0;
+            border-radius: 0;
+            -webkit-appearance: none; /* 移除 iOS 預設樣式 */
+        }
+        
+        input:focus {
+            background-color: #e8f0fe;
+            box-shadow: inset 0 0 0 2px #217346;
+        }
+
+        /* --- 凍結窗格設定 --- */
+        
+        /* 1. 左側第一欄 (項目) */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background-color: #eee;
+            z-index: 10;
+            width: 100px; /* 預設寬度 */
+            font-weight: bold;
+            border-right: 2px solid #888;
+            /* 關鍵：加陰影讓層次分明 */
+            box-shadow: 2px 0 5px -2px rgba(0,0,0,0.3); 
+        }
+
+        /* 2. 頂部標題列 */
+        thead th {
+            background-color: #eee;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            border-bottom: 2px solid #888;
+            padding: 5px 0;
+        }
+
+        /* 左上角交叉點 (層級最高) */
+        thead th.sticky-col {
+            z-index: 20;
+            background-color: #e0e0e0;
+        }
+
+        /* 合計欄與樣式 */
+        .total-col {
+            background-color: #fff3cd;
+            font-weight: bold;
+            min-width: 80px;
+        }
+        .section-header {
+            background-color: #555;
+            color: white;
+            text-align: left;
+            padding-left: 10px;
+            font-size: 13px;
+        }
+        .grand-total-cell {
+            font-size: 1.1em;
+            border: 2px solid #000;
+            color: blue;
+        }
+
+        /* --- 底部驗算區 --- */
+        .verification-panel {
+            margin-top: 15px;
+            background: white;
+            border: 2px solid #333;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .grand-display {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        /* 機器輸入區排版 */
+        .machine-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 兩欄排列 */
+            gap: 10px;
+        }
+        .v-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 2px;
+            color: #555;
+        }
+        .v-input {
+            width: 100%;
+            border: 1px solid #999;
+            border-radius: 4px;
+            padding: 5px;
+            box-sizing: border-box; /* 確保寬度包含框線 */
+        }
+
+        .result-box {
+            margin-top: 15px;
+            padding: 10px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            border-radius: 5px;
+        }
+        .status-balanced { background-color: #28a745; }
+        .status-unbalanced { background-color: #dc3545; }
+
+        /* --- 手機版專用調整 (Media Query) --- */
+        @media screen and (max-width: 768px) {
+            .mobile-hint { display: block; } /* 顯示滑動提示 */
+            
+            .sticky-col {
+                width: 80px; /* 縮窄第一欄 */
+                font-size: 13px;
+                padding: 0 2px;
+            }
+            
+            input { font-size: 14px; } /* 調整字體大小 */
+            
+            .table-container {
+                max-height: 60vh; /* 手機畫面小，限制高度 */
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h2>月例計算總表</h2>
+
+<div class="mobile-hint">← 左右滑動表格以填寫各縣市 →</div>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th class="sticky-col">項目</th>
+                <th>高雄</th><th>台南</th><th>澎湖</th><th>嘉義</th><th>彰化</th>
+                <th>埔里</th><th>新竹</th><th>桃園</th><th>台北</th><th>宜蘭</th>
+                <th class="total-col">合計</th>
+            </tr>
+        </thead>
+        <tbody id="mainBody">
+            </tbody>
+    </table>
+</div>
+
+<div class="verification-panel">
+    <div class="grand-display">
+        手算總金額：<span id="final_manual_total" style="color: blue;">0</span>
+    </div>
+    
+    <div style="font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555;">機器驗算輸入：</div>
+    <div class="machine-grid">
+        <div class="v-group">
+            <label>點幣機零錢</label>
+            <input type="number" class="v-input" id="vm_coin" oninput="verify()" placeholder="0">
+        </div>
+        <div class="v-group">
+            <label>點鈔機 100</label>
+            <input type="number" class="v-input" id="vm_100" oninput="verify()" placeholder="0">
+        </div>
+        <div class="v-group">
+            <label>點鈔機 500</label>
+            <input type="number" class="v-input" id="vm_500" oninput="verify()" placeholder="0">
+        </div>
+        <div class="v-group">
+            <label>點鈔機 1000</label>
+            <input type="number" class="v-input" id="vm_1000" oninput="verify()" placeholder="0">
+        </div>
+    </div>
+
+    <div id="verify_result" class="result-box status-balanced">
+        差異：0
+    </div>
+</div>
+
+<script>
+    const rows = [
+        { id: 'b_1000', label: '$1000', val: 1000, isBill: true },
+        { id: 'b_500',  label: '$500',   val: 500,  isBill: true },
+        { id: 'b_100',  label: '$100',   val: 100,  isBill: true },
+        { id: 'c_50',   label: '$50',    val: 1,    isBill: false },
+        { id: 'c_10',   label: '$10',    val: 1,    isBill: false },
+        { id: 'c_5',    label: '$5',     val: 1,    isBill: false },
+        { id: 'c_1',    label: '$1',     val: 1,    isBill: false }
+    ];
+
+    const regionCount = 10;
+    let grandManualTotal = 0;
+
+    function init() {
+        const tbody = document.getElementById('mainBody');
+        let html = '';
+
+        // 紙鈔標題
+        html += `<tr><td class="sticky-col section-header">紙鈔(張)</td><td colspan="${regionCount + 1}" class="section-header"></td></tr>`;
+
+        rows.forEach((row, index) => {
+            if (index === 3) { // 硬幣標題
+                html += `<tr><td class="sticky-col section-header">硬幣(總額)</td><td colspan="${regionCount + 1}" class="section-header"></td></tr>`;
+            }
+
+            html += `<tr>`;
+            html += `<td class="sticky-col">${row.label}</td>`;
+            for(let i=0; i<regionCount; i++) {
+                html += `<td><input type="number" id="${row.id}_${i}" oninput="calcAll()" placeholder="-"></td>`;
+            }
+            html += `<td class="total-col" id="row_sum_${row.id}">0</td>`;
+            html += `</tr>`;
+        });
+
+        // 底部各區總計
+        html += `<tr style="background-color: #f0f0f0; font-weight: bold;">`;
+        html += `<td class="sticky-col">各區總計</td>`;
+        for(let i=0; i<regionCount; i++) {
+            html += `<td id="col_total_${i}" style="font-size: 0.9em;">0</td>`;
+        }
+        html += `<td class="total-col grand-total-cell" id="grand_total_cell">0</td>`;
+        html += `</tr>`;
+
+        tbody.innerHTML = html;
+        
+        // 預設測試值
+        document.getElementById('b_1000_0').value = 5; 
+        document.getElementById('c_50_0').value = 250;
+        calcAll();
+    }
+
+    function calcAll() {
+        let totalOfAllRegions = 0;
+        let columnTotals = new Array(regionCount).fill(0);
+
+        rows.forEach(row => {
+            let rowSum = 0;
+            for(let i=0; i<regionCount; i++) {
+                let inputVal = Number(document.getElementById(`${row.id}_${i}`).value) || 0;
+                let amount = row.isBill ? (inputVal * row.val) : inputVal;
+                rowSum += amount;
+                columnTotals[i] += amount;
+            }
+            document.getElementById(`row_sum_${row.id}`).innerText = rowSum.toLocaleString();
+            totalOfAllRegions += rowSum;
+        });
+
+        for(let i=0; i<regionCount; i++) {
+            document.getElementById(`col_total_${i}`).innerText = columnTotals[i].toLocaleString();
+        }
+
+        document.getElementById('grand_total_cell').innerText = totalOfAllRegions.toLocaleString();
+        document.getElementById('final_manual_total').innerText = totalOfAllRegions.toLocaleString();
+
+        grandManualTotal = totalOfAllRegions;
+        verify();
+    }
+
+    function verify() {
+        const vmCoin = Number(document.getElementById('vm_coin').value) || 0;
+        const vm100 = Number(document.getElementById('vm_100').value) || 0;
+        const vm500 = Number(document.getElementById('vm_500').value) || 0;
+        const vm1000 = Number(document.getElementById('vm_1000').value) || 0;
+
+        const machineTotal = vmCoin + vm100 + vm500 + vm1000;
+        const diff = grandManualTotal - machineTotal;
+        const resultBox = document.getElementById('verify_result');
+        
+        if (diff === 0) {
+            resultBox.innerText = "驗算正確 (OK)";
+            resultBox.className = "result-box status-balanced";
+        } else {
+            resultBox.innerText = `差異：${diff.toLocaleString()}`;
+            resultBox.className = "result-box status-unbalanced";
+        }
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
