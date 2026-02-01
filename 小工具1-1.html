@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>月例計算小工具</title>
+    <title>EMMA#1-2版#月例計算小工具</title>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -12,6 +12,7 @@
             --border-color: #bdc3c7;
             --success-color: #27ae60;
             --danger-color: #c0392b;
+            --clear-color: #7f8c8d;
         }
 
         body {
@@ -39,19 +40,6 @@
             padding-bottom: 10px;
         }
 
-        /* 地區選擇器 */
-        .region-selector {
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        select {
-            padding: 8px 16px;
-            font-size: 16px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
-        }
-
-        /* 表格樣式 */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -90,7 +78,6 @@
             color: var(--primary-color);
         }
 
-        /* 總計行強調 */
         .total-row {
             background-color: #ecf0f1;
             font-weight: bold;
@@ -113,10 +100,12 @@
             color: #856404;
         }
 
+        /* 修正後的機器驗算網格：加入合計數欄位 */
         .verify-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(5, 1fr); /* 調整為5欄 */
             gap: 10px;
+            margin-bottom: 15px;
         }
 
         .verify-item label {
@@ -126,24 +115,60 @@
             color: #666;
         }
 
+        /* 合計數專屬樣式 */
+        .machine-total-box {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: right;
+            font-weight: bold;
+            color: #2c3e50;
+            min-height: 24px;
+        }
+
+        /* 結果顯示與清除按鈕的容器 */
+        .action-area {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
         .result-box {
-            margin-top: 20px;
+            flex-grow: 4; /* 讓差異顯示佔據大部分空間 */
             padding: 15px;
             text-align: center;
             font-size: 1.2em;
             font-weight: bold;
             border-radius: 4px;
             color: white;
+            transition: background-color 0.3s;
         }
 
-        .balanced {
-            background-color: var(--success-color);
+        /* 清除按鈕樣式 */
+        .clear-btn {
+            flex-grow: 1;
+            padding: 15px;
+            font-size: 1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--clear-color);
+            color: white;
+            cursor: pointer;
+            transition: opacity 0.2s;
         }
 
-        .unbalanced {
-            background-color: var(--danger-color);
-            animation: shake 0.5s;
+        .clear-btn:hover {
+            opacity: 0.9;
         }
+
+        .clear-btn:active {
+            transform: scale(0.98);
+        }
+
+        .balanced { background-color: var(--success-color); }
+        .unbalanced { background-color: var(--danger-color); animation: shake 0.5s; }
 
         @keyframes shake {
             0% { transform: translateX(0); }
@@ -153,11 +178,7 @@
             100% { transform: translateX(0); }
         }
 
-        .note {
-            font-size: 12px;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
+        .note { font-size: 12px; color: #7f8c8d; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -165,7 +186,6 @@
 <div class="container">
     <h2>月例計算小工具</h2>
 
-   
     <table>
         <thead>
             <tr>
@@ -224,75 +244,48 @@
         <span class="verification-header">機器驗算區 (請輸入機器讀數)</span>
         <div class="verify-grid">
             <div class="verify-item">
-                <label>點幣機零錢總額</label>
-                <div class="input-group"><input type="number" id="v_coin" oninput="verify()" placeholder="348"></div>
+                <label>點幣機零錢</label>
+                <div class="input-group"><input type="number" id="v_coin" oninput="verify()" placeholder="0"></div>
             </div>
             <div class="verify-item">
                 <label>點鈔機 100</label>
-                <div class="input-group"><input type="number" id="v_100" oninput="verify()" placeholder="1400"></div>
+                <div class="input-group"><input type="number" id="v_100" oninput="verify()" placeholder="0"></div>
             </div>
             <div class="verify-item">
                 <label>點鈔機 500</label>
-                <div class="input-group"><input type="number" id="v_500" oninput="verify()" placeholder="500"></div>
+                <div class="input-group"><input type="number" id="v_500" oninput="verify()" placeholder="0"></div>
             </div>
             <div class="verify-item">
                 <label>點鈔機 1000</label>
-                <div class="input-group"><input type="number" id="v_1000" oninput="verify()" placeholder="5000"></div>
+                <div class="input-group"><input type="number" id="v_1000" oninput="verify()" placeholder="0"></div>
+            </div>
+            <div class="verify-item">
+                <label style="color:var(--primary-color); font-weight:bold;">機器合計數</label>
+                <div id="machineTotalDisplay" class="machine-total-box">0</div>
             </div>
         </div>
 
-        <div id="verifyResult" class="result-box balanced">
-            驗算差異：0
+        <div class="action-area">
+            <div id="verifyResult" class="result-box balanced">
+                驗算差異：0
+            </div>
+            <button class="clear-btn" onclick="clearAll()">清除所有資料</button>
         </div>
     </div>
 </div>
 
 <script>
-    // 預設高雄資料 (來自您的 CSV)
-    const defaultData = {
-        kaohsiung: {
-            in_1000: 5, in_500: 1, in_100: 14,
-            in_50: 250, in_10: 80, in_5: 15, in_1: 3,
-            v_coin: 348, v_100: 1400, v_500: 500, v_1000: 5000
-        }
-    };
-
-    let currentRegion = 'kaohsiung';
-    // 簡單的資料存儲
-    const store = JSON.parse(JSON.stringify(defaultData)); 
-
-    function loadRegionData() {
-        const select = document.getElementById('regionSelect');
-        currentRegion = select.value;
-        
-        // 如果該地區沒有資料，清空；如果有，載入
-        const data = store[currentRegion] || {};
-        
-        const fields = ['in_1000', 'in_500', 'in_100', 'in_50', 'in_10', 'in_5', 'in_1', 'v_coin', 'v_100', 'v_500', 'v_1000'];
-        
-        fields.forEach(id => {
-            document.getElementById(id).value = data[id] !== undefined ? data[id] : '';
-        });
-
-        calculate();
-    }
-
     function calculate() {
-        // 取得輸入值 (若為空則視為 0)
         const getVal = (id) => Number(document.getElementById(id).value) || 0;
 
-        // 計算邏輯：紙鈔是張數 * 面額，硬幣直接是金額
         const s1000 = getVal('in_1000') * 1000;
         const s500 = getVal('in_500') * 500;
         const s100 = getVal('in_100') * 100;
-        
-        // 硬幣輸入即金額
         const s50 = getVal('in_50');
         const s10 = getVal('in_10');
         const s5 = getVal('in_5');
         const s1 = getVal('in_1');
 
-        // 更新小計顯示
         document.getElementById('sub_1000').innerText = s1000.toLocaleString();
         document.getElementById('sub_500').innerText = s500.toLocaleString();
         document.getElementById('sub_100').innerText = s100.toLocaleString();
@@ -301,20 +294,14 @@
         document.getElementById('sub_5').innerText = s5.toLocaleString();
         document.getElementById('sub_1').innerText = s1.toLocaleString();
 
-        // 總計
         const total = s1000 + s500 + s100 + s50 + s10 + s5 + s1;
         document.getElementById('grandTotal').innerText = total.toLocaleString();
 
-        // 保存當前輸入到 store
-        saveCurrentState();
-        
-        // 觸發驗算
         verify(total);
     }
 
     function verify(manualTotal) {
         if (manualTotal === undefined) {
-             // 重新計算 total
              const getVal = (id) => Number(document.getElementById(id).value) || 0;
              manualTotal = (getVal('in_1000') * 1000) + (getVal('in_500') * 500) + (getVal('in_100') * 100) +
                            getVal('in_50') + getVal('in_10') + getVal('in_5') + getVal('in_1');
@@ -322,33 +309,33 @@
 
         const getVal = (id) => Number(document.getElementById(id).value) || 0;
         
+        // 計算機器總額並顯示
         const machineTotal = getVal('v_coin') + getVal('v_100') + getVal('v_500') + getVal('v_1000');
-        const diff = manualTotal - machineTotal;
+        document.getElementById('machineTotalDisplay').innerText = machineTotal.toLocaleString();
 
+        const diff = manualTotal - machineTotal;
         const resultBox = document.getElementById('verifyResult');
-        resultBox.innerText = diff === 0 ? "驗算平衡 (OK)" : `驗算差異：${diff}`;
         
         if (diff === 0) {
+            resultBox.innerText = "驗算平衡 (OK)";
             resultBox.className = "result-box balanced";
         } else {
+            resultBox.innerText = `驗算差異：${diff.toLocaleString()}`;
             resultBox.className = "result-box unbalanced";
         }
-        
-        saveCurrentState();
     }
 
-    function saveCurrentState() {
-        if (!store[currentRegion]) store[currentRegion] = {};
-        const fields = ['in_1000', 'in_500', 'in_100', 'in_50', 'in_10', 'in_5', 'in_1', 'v_coin', 'v_100', 'v_500', 'v_1000'];
-        fields.forEach(id => {
-            const val = document.getElementById(id).value;
-            if (val) store[currentRegion][id] = Number(val);
-            else delete store[currentRegion][id];
-        });
+    // 清除所有填入的資料
+    function clearAll() {
+        if(confirm("確定要清除所有填入的數字嗎？")) {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => input.value = '');
+            calculate(); // 重新觸發計算以歸零顯示
+        }
     }
 
-    // 初始化
-    window.onload = loadRegionData;
+    // 頁面載入時初始化
+    window.onload = calculate;
 </script>
 
 </body>
